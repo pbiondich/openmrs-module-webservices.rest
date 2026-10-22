@@ -19,7 +19,7 @@ concurrency:
 env:
   # The core branch carrying the API these branches compile against. Move it to
   # assertion-model/main once the core PRs below it have merged.
-  CORE_REF: assertion-model/p1-privileges-daemon
+  CORE_REF: assertion-model/p2-attestation
 
 jobs:
   build:
