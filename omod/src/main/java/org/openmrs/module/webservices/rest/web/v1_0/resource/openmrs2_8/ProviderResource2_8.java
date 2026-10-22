@@ -22,7 +22,7 @@ import org.openmrs.module.webservices.rest.web.v1_0.resource.openmrs1_9.RestCons
 /**
  * @since 2.8.0
  */
-@Resource(name = RestConstants.VERSION_1 + "/provider", supportedClass = Provider.class, supportedOpenmrsVersions = { "2.8.* - 9.*" })
+@Resource(name = RestConstants.VERSION_1 + "/provider", supportedClass = Provider.class, supportedOpenmrsVersions = { "2.8.* - 2.*" })
 public class ProviderResource2_8 extends ProviderResource1_9 {
 
     @Override
