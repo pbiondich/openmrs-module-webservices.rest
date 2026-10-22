@@ -64,6 +64,18 @@ public class FinalizationPolicyResource3_0 extends MetadataDelegatingCrudResourc
 		return description;
 	}
 	
+	/**
+	 * Only the name and description change: what a policy covers and does stays as it applied, and a
+	 * different rule is a new policy, with the old one retired.
+	 */
+	@Override
+	public DelegatingResourceDescription getUpdatableProperties() {
+		DelegatingResourceDescription description = new DelegatingResourceDescription();
+		description.addProperty("name");
+		description.addProperty("description");
+		return description;
+	}
+	
 	@Override
 	public ObsFinalizationPolicy getByUniqueId(String uuid) {
 		return Context.getObsService().getObsFinalizationPolicyByUuid(uuid);

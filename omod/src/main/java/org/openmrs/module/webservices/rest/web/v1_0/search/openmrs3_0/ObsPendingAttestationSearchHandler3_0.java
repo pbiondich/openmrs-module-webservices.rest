@@ -21,6 +21,7 @@ import org.openmrs.module.webservices.rest.web.resource.api.SearchConfig;
 import org.openmrs.module.webservices.rest.web.resource.api.SearchHandler;
 import org.openmrs.module.webservices.rest.web.resource.api.SearchQuery;
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
+import org.openmrs.module.webservices.rest.web.response.IllegalRequestException;
 import org.openmrs.module.webservices.rest.web.response.ObjectNotFoundException;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
 import org.springframework.stereotype.Component;
@@ -49,6 +50,9 @@ public class ObsPendingAttestationSearchHandler3_0 implements SearchHandler {
 	
 	@Override
 	public PageableResult search(RequestContext context) throws ResponseException {
+		if (!"true".equals(context.getParameter(PENDING_ATTESTATION))) {
+			throw new IllegalRequestException(PENDING_ATTESTATION + " must be true");
+		}
 		Patient patient = Context.getPatientService().getPatientByUuid(context.getParameter(PATIENT));
 		if (patient == null) {
 			throw new ObjectNotFoundException();

@@ -42,4 +42,18 @@ public class FinalizationPolicyController3_0Test extends RestControllerTestUtils
 		Assertions.assertThrows(Exception.class, () -> handle(newPostRequest("finalizationpolicy",
 		    "{\"name\":\"Software is final\",\"agentType\":\"SOFTWARE\",\"action\":\"AUTO_FINAL\"}")));
 	}
+	
+	@Test
+	public void shouldNotChangeWhatAPolicyCoversOrDoes() throws Exception {
+		SimpleObject created = deserialize(handle(newPostRequest("finalizationpolicy",
+		    "{\"name\":\"Software waits\",\"agentType\":\"SOFTWARE\",\"action\":\"REQUIRE_ATTESTATION\"}")));
+		
+		Assertions.assertThrows(Exception.class, () -> handle(newPostRequest("finalizationpolicy/" + created.get("uuid"),
+		    "{\"action\":\"AUTO_FINAL\"}")));
+		handle(newPostRequest("finalizationpolicy/" + created.get("uuid"), "{\"name\":\"Software obs wait\"}"));
+		
+		ObsFinalizationPolicy saved = Context.getObsService().getObsFinalizationPolicyByUuid((String) created.get("uuid"));
+		Assertions.assertEquals(ObsFinalizationPolicy.Action.REQUIRE_ATTESTATION, saved.getAction());
+		Assertions.assertEquals("Software obs wait", saved.getName());
+	}
 }
