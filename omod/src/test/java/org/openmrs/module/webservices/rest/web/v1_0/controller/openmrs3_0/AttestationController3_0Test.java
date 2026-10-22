@@ -89,7 +89,7 @@ public class AttestationController3_0Test extends RestControllerTestUtils {
 	@Test
 	public void shouldNotChangeAnAttestation() throws Exception {
 		SimpleObject attestation = deserialize(handle(newPostRequest("attestation", "{\"attester\":\""
-		        + NURSE_PROVIDER_UUID + "\",\"items\":[{\"obs\":\"" + obs.getUuid() + "\",\"outcome\":\"REJECTED\"}]}")));
+		        + NURSE_PROVIDER_UUID + "\",\"items\":[{\"obs\":\"" + obs.getUuid() + "\",\"outcome\":\"LEFT_PRELIMINARY\"}]}")));
 		
 		Assertions.assertThrows(Exception.class, () -> handle(newPostRequest("attestation/" + attestation.get("uuid"),
 		    "{\"items\":[{\"obs\":\"" + obs.getUuid() + "\",\"outcome\":\"ACCEPTED\"}]}")));

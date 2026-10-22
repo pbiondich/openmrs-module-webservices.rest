@@ -25,10 +25,10 @@ import org.openmrs.util.PrivilegeConstants;
 
 /**
  * Phase 2 of the assertion model, end to end through REST: an extractor posts five obs, which wait
- * preliminary under the software policy; a nurse attests four accepted and one rejected; the four are
- * final, the rejected one stays preliminary with its outcome on record; editing an accepted obs makes
- * an amended version, and voiding one marks it entered in error. The plan's "default GET returns
- * none" waits for the read path decision on the attestation PR.
+ * preliminary under the software policy and show as preliminary on an ordinary GET; a nurse attests
+ * four accepted and one rejected; the four are final, the rejected one is invalidated, voided as
+ * entered in error with its rejection on record; editing an accepted obs makes an amended version,
+ * and voiding one marks it entered in error. Reads hide only what they always hid, voided obs.
  */
 public class AttestationAcceptance3_0Test extends RestControllerTestUtils {
 	
@@ -64,7 +64,7 @@ public class AttestationAcceptance3_0Test extends RestControllerTestUtils {
 		for (int i = 0; i < 4; i++) {
 			Assertions.assertEquals("FINAL", status(posted.get(i)));
 		}
-		Assertions.assertEquals("PRELIMINARY", status(posted.get(4)));
+		Assertions.assertEquals("ENTERED_IN_ERROR", status(posted.get(4)));
 		SimpleObject saved = deserialize(handle(newGetRequest("attestation/" + attestation.get("uuid"))));
 		Map<?, ?> rejected = (Map<?, ?>) ((List<?>) saved.get("items")).get(4);
 		Assertions.assertEquals("REJECTED", rejected.get("outcome"));

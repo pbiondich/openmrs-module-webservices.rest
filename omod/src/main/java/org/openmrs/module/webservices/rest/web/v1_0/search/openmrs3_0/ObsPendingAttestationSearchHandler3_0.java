@@ -40,7 +40,7 @@ public class ObsPendingAttestationSearchHandler3_0 implements SearchHandler {
 	
 	private final SearchConfig searchConfig = new SearchConfig("pendingAttestation", RestConstants.VERSION_1 + "/obs",
 	        Collections.singletonList("3.0.* - 9.*"), new SearchQuery.Builder(
-	                "Finds a patient's preliminary obs that no attestation rejected").withRequiredParameters(PATIENT,
+	                "Finds a patient's preliminary obs that are not voided, which wait for attestation").withRequiredParameters(PATIENT,
 	            PENDING_ATTESTATION).build());
 	
 	@Override
