@@ -11,6 +11,7 @@ package org.openmrs.module.webservices.rest.web.v1_0.resource.openmrs3_0;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Locale;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
@@ -33,8 +34,10 @@ import org.openmrs.module.webservices.rest.web.resource.api.PageableResult;
 import org.openmrs.module.webservices.rest.web.resource.api.Uploadable;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingCrudResource;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
+import org.openmrs.module.webservices.rest.web.resource.impl.EmptySearchResult;
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.IllegalRequestException;
+import org.openmrs.module.webservices.rest.web.response.ObjectNotFoundException;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
 import org.springframework.web.multipart.MultipartFile;
@@ -122,12 +125,14 @@ public class CaptureResource3_0 extends DelegatingCrudResource<Capture> implemen
 	 */
 	@Override
 	public Object update(String uuid, SimpleObject propertiesToUpdate, RequestContext context) throws ResponseException {
-		if (propertiesToUpdate.size() != 1 || !"WITHDRAWN".equals(propertiesToUpdate.get("consentStatus"))) {
+		if (propertiesToUpdate.size() != 1 || propertiesToUpdate.get("consentStatus") == null
+		        || enumValue(Capture.ConsentStatus.class,
+		            propertiesToUpdate.get("consentStatus")) != Capture.ConsentStatus.WITHDRAWN) {
 			throw new IllegalRequestException("A capture takes only {\"consentStatus\": \"WITHDRAWN\"}");
 		}
 		Capture capture = getByUniqueId(uuid);
 		if (capture == null) {
-			throw new IllegalRequestException("No capture with uuid " + uuid);
+			throw new ObjectNotFoundException();
 		}
 		try {
 			capture = service().withdrawConsent(capture);
@@ -149,7 +154,7 @@ public class CaptureResource3_0 extends DelegatingCrudResource<Capture> implemen
 		}
 		Encounter encounter = Context.getEncounterService().getEncounterByUuid(encounterUuid);
 		if (encounter == null) {
-			throw new IllegalRequestException("No encounter with uuid " + encounterUuid);
+			return new EmptySearchResult();
 		}
 		return new NeedsPaging<Capture>(service().getCapturesByEncounter(encounter), context);
 	}
@@ -186,7 +191,7 @@ public class CaptureResource3_0 extends DelegatingCrudResource<Capture> implemen
 	
 	static <E extends Enum<E>> E enumValue(Class<E> type, Object value) {
 		try {
-			return Enum.valueOf(type, String.valueOf(value).toUpperCase());
+			return Enum.valueOf(type, String.valueOf(value).toUpperCase(Locale.ROOT));
 		}
 		catch (IllegalArgumentException e) {
 			throw new IllegalRequestException("Unknown " + type.getSimpleName() + " " + value + "; use one of "

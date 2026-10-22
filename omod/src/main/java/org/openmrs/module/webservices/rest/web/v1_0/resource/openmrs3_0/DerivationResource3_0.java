@@ -29,6 +29,7 @@ import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.api.PageableResult;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingCrudResource;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
+import org.openmrs.module.webservices.rest.web.resource.impl.EmptySearchResult;
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.IllegalRequestException;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
@@ -115,7 +116,10 @@ public class DerivationResource3_0 extends DelegatingCrudResource<Derivation> {
 		if (StringUtils.isBlank(captureUuid)) {
 			throw new IllegalRequestException("Search derivations by capture");
 		}
-		Capture capture = found(service().getCaptureByUuid(captureUuid), captureUuid);
+		Capture capture = service().getCaptureByUuid(captureUuid);
+		if (capture == null) {
+			return new EmptySearchResult();
+		}
 		return new NeedsPaging<Derivation>(service().getDerivationsByCapture(capture), context);
 	}
 	

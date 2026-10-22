@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.openmrs.api.ValidationException;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.MainResourceControllerTest.Parameter;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.RestControllerTestUtils;
@@ -86,9 +87,36 @@ public class CaptureController3_0Test extends RestControllerTestUtils {
 	public void obs_shouldRefuseASpanThatDoesNotFitItsCapture() throws Exception {
 		SimpleObject note = CaptureAcceptance3_0Test.upload(this, "note.txt", "text/plain", NOTE, JSON);
 		
-		Assertions.assertThrows(Exception.class, () -> handle(newPostRequest("obs", "{\"person\":\""
+		Assertions.assertThrows(ValidationException.class, () -> handle(newPostRequest("obs", "{\"person\":\""
 		        + CaptureAcceptance3_0Test.PATIENT_UUID + "\",\"encounter\":\"" + CaptureAcceptance3_0Test.ENCOUNTER_UUID
 		        + "\",\"concept\":\"SNOMED CT:2332523\",\"value\":\"12.5\",\"obsDatetime\":\"2026-10-22T09:00:00.000+0000\","
 		        + "\"capture\":\"" + note.get("uuid") + "\",\"span\":\"t=1.0-2.0\"}")));
+	}
+	
+	@Test
+	public void obs_shouldNotTakeACaptureOrSpanOnUpdate() throws Exception {
+		SimpleObject note = CaptureAcceptance3_0Test.upload(this, "note.txt", "text/plain", NOTE, JSON);
+		SimpleObject obs = deserialize(handle(newPostRequest("obs", "{\"person\":\"" + CaptureAcceptance3_0Test.PATIENT_UUID
+		        + "\",\"encounter\":\"" + CaptureAcceptance3_0Test.ENCOUNTER_UUID
+		        + "\",\"concept\":\"SNOMED CT:2332523\",\"value\":\"12.5\",\"obsDatetime\":\"2026-10-22T09:00:00.000+0000\"}")));
+		
+		Assertions.assertThrows(ConversionException.class, () -> handle(
+		    newPostRequest("obs/" + obs.get("uuid"), "{\"capture\":\"" + note.get("uuid") + "\",\"span\":\"c=1-2\"}")));
+	}
+	
+	@Test
+	public void derivation_shouldBeListedByCaptureNeverChangedAndVoidedOnDelete() throws Exception {
+		SimpleObject note = CaptureAcceptance3_0Test.upload(this, "note.txt", "text/plain", NOTE, JSON);
+		SimpleObject derivation = deserialize(handle(newPostRequest("derivation", "{\"capture\":\"" + note.get("uuid")
+		        + "\",\"started\":\"2026-10-22T10:00:00.000+0000\",\"finished\":\"2026-10-22T10:00:05.000+0000\"}")));
+		
+		Assertions.assertEquals(1, ((java.util.List<?>) deserialize(
+		    handle(newGetRequest("derivation", new Parameter("capture", (String) note.get("uuid"))))).get("results")).size());
+		Assertions.assertThrows(ResourceDoesNotSupportOperationException.class,
+		    () -> handle(newPostRequest("derivation/" + derivation.get("uuid"), "{\"paramsHash\":\"x\"}")));
+		handle(newDeleteRequest("derivation/" + derivation.get("uuid"), new Parameter("reason", "rerun")));
+		Assertions.assertEquals(true, deserialize(handle(newGetRequest("derivation/" + derivation.get("uuid")))).get("voided"));
+		Assertions.assertTrue(((java.util.List<?>) deserialize(
+		    handle(newGetRequest("derivation", new Parameter("capture", "no-such-capture")))).get("results")).isEmpty());
 	}
 }

@@ -15,7 +15,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.IOUtils;
 import org.openmrs.Capture;
-import org.openmrs.api.APIException;
 import org.openmrs.api.CaptureService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.webservices.rest.web.RestConstants;
@@ -40,24 +39,18 @@ public class CaptureArtifactController3_0 extends BaseRestController {
 	public void getArtifact(@PathVariable("uuid") String uuid, HttpServletResponse response) throws Exception {
 		CaptureService captureService = Context.getCaptureService();
 		Capture capture = captureService.getCaptureByUuid(uuid);
-		if (capture == null) {
+		// only a voided capture or a deleted artifact is "not found"; a storage failure is a server error
+		if (capture == null || capture.getVoided() || capture.getArtifactDeletedAt() != null) {
 			throw new ObjectNotFoundException();
 		}
-		InputStream artifact;
-		try {
-			artifact = captureService.getArtifact(capture);
-		}
-		catch (APIException e) {
-			throw new ObjectNotFoundException(e.getMessage());
-		}
+		InputStream artifact = captureService.getArtifact(capture);
 		try (InputStream in = artifact) {
 			response.setContentType(capture.getMimeType());
 			response.setHeader("X-Content-Type-Options", "nosniff");
 			response.setHeader("Content-Disposition", "attachment; filename=\"" + capture.getUuid() + "\"");
 			response.setHeader("Content-Security-Policy", "sandbox");
-			if (capture.getSha256() != null) {
-				response.setHeader("ETag", "\"" + capture.getSha256() + "\"");
-			}
+			// patient data: never kept by a shared cache
+			response.setHeader("Cache-Control", "private, no-store");
 			IOUtils.copy(in, response.getOutputStream());
 		}
 		response.flushBuffer();

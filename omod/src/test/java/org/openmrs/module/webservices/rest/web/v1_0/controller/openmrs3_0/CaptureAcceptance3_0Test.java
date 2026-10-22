@@ -68,6 +68,7 @@ public class CaptureAcceptance3_0Test extends RestControllerTestUtils {
 		Assertions.assertEquals("application/pdf", artifact.getContentType());
 		Assertions.assertEquals("nosniff", artifact.getHeader("X-Content-Type-Options"));
 		Assertions.assertTrue(artifact.getHeader("Content-Disposition").startsWith("attachment"));
+		Assertions.assertEquals("private, no-store", artifact.getHeader("Cache-Control"));
 	}
 	
 	@Test
