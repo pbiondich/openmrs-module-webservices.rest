@@ -119,4 +119,14 @@ public class CaptureController3_0Test extends RestControllerTestUtils {
 		Assertions.assertTrue(((java.util.List<?>) deserialize(
 		    handle(newGetRequest("derivation", new Parameter("capture", "no-such-capture")))).get("results")).isEmpty());
 	}
+	
+	@Test
+	public void derivation_shouldRefuseAnotherPersonAsTheAgent() throws Exception {
+		SimpleObject note = CaptureAcceptance3_0Test.upload(this, "note.txt", "text/plain", NOTE, JSON);
+		
+		// bruno, a person in the standard test data
+		Assertions.assertThrows(IllegalRequestException.class, () -> handle(newPostRequest("derivation", "{\"capture\":\""
+		        + note.get("uuid") + "\",\"agent\":\"c1d8f5c2-e131-11de-babe-001e378eb67e\","
+		        + "\"started\":\"2026-10-22T10:00:00.000+0000\",\"finished\":\"2026-10-22T10:00:05.000+0000\"}")));
+	}
 }
