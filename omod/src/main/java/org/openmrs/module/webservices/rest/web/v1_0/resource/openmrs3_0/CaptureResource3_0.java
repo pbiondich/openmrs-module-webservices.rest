@@ -16,6 +16,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.openmrs.Capture;
+import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.api.APIException;
 import org.openmrs.api.CaptureService;
@@ -43,10 +44,12 @@ import org.openmrs.module.webservices.rest.web.response.ResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * A capture: the scanned form, recording or other artifact an encounter was captured in. Create one
- * with a multipart POST of the artifact as <code>file</code> and a <code>json</code> parameter with
- * the encounter's uuid, the kind and optionally the media type and consent; the artifact itself is
- * read from <code>capture/{uuid}/artifact</code>. A capture is never changed, except to record
+ * A capture: the scanned form, recording or other artifact an encounter was captured in, held as a
+ * complex obs of the encounter. Create one with a multipart POST of the artifact as
+ * <code>file</code> and a <code>json</code> parameter with the encounter's uuid, the kind, the
+ * complex concept to record it under, and optionally the media type, consent and the capture it was
+ * derived from (for an intermediate form such as a transcript); the artifact itself is read from
+ * <code>capture/{uuid}/artifact</code>. A capture is never changed, except to record
  * withdrawn consent by POSTing <code>{"consentStatus": "WITHDRAWN"}</code>; DELETE voids it.
  *
  * @since 3.0
@@ -55,7 +58,8 @@ import org.springframework.web.multipart.MultipartFile;
         "3.0.* - 9.*" })
 public class CaptureResource3_0 extends DelegatingCrudResource<Capture> implements Uploadable {
 	
-	private static final Set<String> UPLOAD_PROPERTIES = Set.of("encounter", "kind", "mimeType", "consentStatus");
+	private static final Set<String> UPLOAD_PROPERTIES = Set.of("encounter", "kind", "concept", "mimeType",
+	    "consentStatus", "derivedFrom");
 	
 	@Override
 	public DelegatingResourceDescription getRepresentationDescription(Representation rep) {
@@ -65,6 +69,8 @@ public class CaptureResource3_0 extends DelegatingCrudResource<Capture> implemen
 		if (rep instanceof DefaultRepresentation || rep instanceof FullRepresentation) {
 			description.addProperty("encounter", Representation.REF);
 			description.addProperty("kind");
+			description.addProperty("obs", Representation.REF);
+			description.addProperty("derivedFrom", Representation.REF);
 			description.addProperty("mimeType");
 			description.addProperty("sha256");
 			description.addProperty("consentStatus");
@@ -94,8 +100,13 @@ public class CaptureResource3_0 extends DelegatingCrudResource<Capture> implemen
 				throw new IllegalRequestException("A capture takes only " + UPLOAD_PROPERTIES + ", not " + key);
 			}
 		}
-		if (!(fields.get("encounter") instanceof String) || fields.get("kind") == null) {
-			throw new IllegalRequestException("A capture needs its encounter's uuid and its kind");
+		if (!(fields.get("encounter") instanceof String) || fields.get("kind") == null
+		        || !(fields.get("concept") instanceof String)) {
+			throw new IllegalRequestException("A capture needs its encounter's uuid, its kind and its concept's uuid");
+		}
+		Concept concept = Context.getConceptService().getConceptByUuid((String) fields.get("concept"));
+		if (concept == null) {
+			throw new IllegalRequestException("No concept with uuid " + fields.get("concept"));
 		}
 		Encounter encounter = Context.getEncounterService().getEncounterByUuid((String) fields.get("encounter"));
 		if (encounter == null) {
@@ -106,8 +117,13 @@ public class CaptureResource3_0 extends DelegatingCrudResource<Capture> implemen
 		if (fields.get("consentStatus") != null) {
 			capture.setConsentStatus(enumValue(Capture.ConsentStatus.class, fields.get("consentStatus")));
 		}
+		if (fields.get("derivedFrom") != null) {
+			capture.setDerivedFrom(DerivationResource3_0.found(
+			    service().getCaptureByUuid(DerivationResource3_0.uuid(fields.get("derivedFrom"), "derivedFrom")),
+			    fields.get("derivedFrom")));
+		}
 		try (InputStream artifact = file.getInputStream()) {
-			capture = service().createCapture(capture, artifact);
+			capture = service().createCapture(capture, concept, artifact);
 		}
 		catch (APIException e) {
 			throw new IllegalRequestException(e.getMessage());

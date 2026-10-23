@@ -12,6 +12,7 @@ package org.openmrs.module.webservices.rest.web.v1_0.controller.openmrs3_0;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmrs.api.ValidationException;
 import org.openmrs.module.webservices.rest.SimpleObject;
@@ -25,6 +26,11 @@ import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOp
  * Tests for the capture and derivation resources, and for capture and span on obs.
  */
 public class CaptureController3_0Test extends RestControllerTestUtils {
+	
+	@BeforeEach
+	public void loadComplexConcept() {
+		executeDataSet(CaptureAcceptance3_0Test.DATASET);
+	}
 	
 	private static final String JSON = "{\"encounter\":\"" + CaptureAcceptance3_0Test.ENCOUNTER_UUID
 	        + "\",\"kind\":\"TYPED_TEXT\"}";

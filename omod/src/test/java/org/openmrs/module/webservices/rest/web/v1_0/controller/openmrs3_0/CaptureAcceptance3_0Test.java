@@ -39,14 +39,29 @@ public class CaptureAcceptance3_0Test extends RestControllerTestUtils {
 	/** The patient of that encounter in the standard test data. */
 	static final String PATIENT_UUID = "5946f880-b197-400b-9caa-a3c661d23041";
 	
+	/** A complex concept whose handler keeps the bytes as received, from core's capture test data. */
+	static final String CONCEPT_UUID = "3c1f0e7a-2b8d-4d5e-9f61-7a2b4c8d9e01";
+	
+	static final String DATASET = "org/openmrs/api/include/CaptureServiceTest.xml";
+	
 	static final byte[] IMCI_SHEET = "%PDF-1.4 an IMCI sheet".getBytes(StandardCharsets.UTF_8);
 	
 	@Test
 	public void anExtractorsObsShouldPointIntoTheScannedSheetItCameFrom() throws Exception {
+		executeDataSet(DATASET);
 		SimpleObject sheet = upload(this, "imci.pdf", "application/pdf", IMCI_SHEET,
 		    "{\"encounter\":\"" + ENCOUNTER_UUID + "\",\"kind\":\"SCANNED_FORM\",\"consentStatus\":\"GIVEN\"}");
 		Assertions.assertEquals("SCANNED_FORM", sheet.get("kind"));
 		Assertions.assertNull(sheet.get("expiresAt"));
+		// the sheet itself is a complex obs of the encounter, there as any attachment is
+		Map<?, ?> sheetObs = (Map<?, ?>) sheet.get("obs");
+		Assertions.assertNotNull(deserialize(handle(newGetRequest("obs/" + sheetObs.get("uuid")))).get("value"));
+		
+		// a transcript of it is a capture of its own, derived from the sheet
+		SimpleObject transcript = upload(this, "imci.txt", "text/plain", "weight 12.5 kg".getBytes(StandardCharsets.UTF_8),
+		    "{\"encounter\":\"" + ENCOUNTER_UUID + "\",\"kind\":\"TYPED_TEXT\",\"concept\":\"" + CONCEPT_UUID
+		            + "\",\"derivedFrom\":\"" + sheet.get("uuid") + "\"}");
+		Assertions.assertEquals(sheet.get("uuid"), ((Map<?, ?>) transcript.get("derivedFrom")).get("uuid"));
 		
 		SimpleObject derivation = deserialize(handle(newPostRequest("derivation", "{\"capture\":\"" + sheet.get("uuid")
 		        + "\",\"started\":\"2026-10-22T10:00:00.000+0000\",\"finished\":\"2026-10-22T10:00:05.000+0000\","
@@ -73,6 +88,7 @@ public class CaptureAcceptance3_0Test extends RestControllerTestUtils {
 	
 	@Test
 	public void theRetentionTaskShouldDeleteExpiredAudioButNeverAScannedForm() throws Exception {
+		executeDataSet(DATASET);
 		SimpleObject sheet = upload(this, "imci.pdf", "application/pdf", IMCI_SHEET,
 		    "{\"encounter\":\"" + ENCOUNTER_UUID + "\",\"kind\":\"SCANNED_FORM\"}");
 		SimpleObject audio = upload(this, "visit.mp3", "audio/mpeg", "a recording".getBytes(StandardCharsets.UTF_8),
@@ -87,6 +103,10 @@ public class CaptureAcceptance3_0Test extends RestControllerTestUtils {
 		    null);
 		
 		Assertions.assertNotNull(capture(audio).get("artifactDeletedAt"));
+		// its complex obs is voided, so no attachment is left pointing at a deleted file
+		String audioObs = (String) ((Map<?, ?>) audio.get("obs")).get("uuid");
+		Assertions.assertEquals(true, deserialize(handle(newGetRequest("obs/" + audioObs, new Parameter("v", "full"))))
+		        .get("voided"));
 		Assertions.assertEquals(404, status(newGetRequest("capture/" + audio.get("uuid") + "/artifact")));
 		Assertions.assertNull(capture(sheet).get("artifactDeletedAt"));
 		Assertions.assertArrayEquals(IMCI_SHEET,
@@ -112,7 +132,9 @@ public class CaptureAcceptance3_0Test extends RestControllerTestUtils {
 	        throws Exception {
 		MockMultipartHttpServletRequest request = test.newUploadRequest("capture");
 		request.addFile(new MockMultipartFile("file", filename, mimeType, content));
-		request.addParameter("json", json);
+		// every capture here is recorded under the test data's complex concept, unless the json names one
+		request.addParameter("json", json.contains("\"concept\"") ? json
+		        : json.replaceFirst("\\}$", ",\"concept\":\"" + CONCEPT_UUID + "\"}"));
 		return test.deserialize(test.handle(request));
 	}
 }
